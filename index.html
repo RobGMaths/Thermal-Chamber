@@ -203,7 +203,10 @@
 
   // --- DOM ---
   const brickGrid = document.getElementById('brickGrid');
-  const tempValue = document.getElementById('tempValue');
+ const startValueEl   = document.getElementById('startValue');
+const appliedValueEl = document.getElementById('appliedValue');
+const removedValueEl = document.getElementById('removedValue');
+const resultValueEl  = document.getElementById('resultValue');
   const logList = document.getElementById('logList');
   const applyZone = document.getElementById('applyZone');
   const removeZone = document.getElementById('removeZone');
@@ -213,9 +216,17 @@
   const fmt = (n) => (n > 0 ? `+${n}` : `${n}`);
   const isPos = (n) => n > 0;
 
-  function renderTemp(){
-    tempValue.textContent = `${temperature}°C`;
-  }
+  function renderAll(){
+
+  startValueEl.textContent  = `${startTemperature}°C`;
+  resultValueEl.textContent = `${temperature}°C`;
+
+  appliedValueEl.textContent = 
+    lastApplied === null ? '—' : fmt(lastApplied);
+
+  removedValueEl.textContent = 
+    lastRemoved === null ? '—' : fmt(lastRemoved);
+}
 
   function addLog(text){
     const div = document.createElement('div');
