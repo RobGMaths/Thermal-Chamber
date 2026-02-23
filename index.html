@@ -251,19 +251,27 @@ const resultValueEl  = document.getElementById('resultValue');
     });
   }
 
-  function applyChange(v){
-    temperature += v;
-    history.push({type:'apply', value:v});
-    addLog(`Applied change ${fmt(v)} → temperature is now ${temperature}°C.`);
-    renderTemp();
-  }
+function applyChange(v){
+  temperature += v;
+  history.push({type:'apply', value:v});
 
-  function removeChange(v){
-    temperature += (-v);
-    history.push({type:'remove', value:v});
-    addLog(`Removed change ${fmt(v)} → equivalent to adding ${fmt(-v)} → temperature is now ${temperature}°C.`);
-    renderTemp();
-  }
+  lastApplied = v;
+  lastRemoved = null;
+
+  addLog(`Applied change ${fmt(v)} → temperature is now ${temperature}°C.`);
+  renderAll();
+}
+
+function removeChange(v){
+  temperature += (-v);
+  history.push({type:'remove', value:v});
+
+  lastRemoved = v;
+  lastApplied = null;
+
+  addLog(`Removed change ${fmt(v)} → equivalent to adding ${fmt(-v)} → temperature is now ${temperature}°C.`);
+  renderAll();
+}
 
   function setDropZone(zoneEl, onDropFn){
     zoneEl.addEventListener('dragover', (e) => {
@@ -281,13 +289,19 @@ const resultValueEl  = document.getElementById('resultValue');
     });
   }
 
-  function resetAll(){
-    temperature = 0;
-    history = [];
-    logList.innerHTML = '';
-    addLog('Reset: temperature back to 0°C.');
-    renderTemp();
-  }
+function resetAll(){
+  startTemperature = 0;
+  temperature = 0;
+
+  lastApplied = null;
+  lastRemoved = null;
+
+  history = [];
+  logList.innerHTML = '';
+  addLog('Reset: temperature back to 0°C.');
+
+  renderAll();
+}
 
   function undo(){
     const last = history.pop();
