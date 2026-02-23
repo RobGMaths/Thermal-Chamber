@@ -113,38 +113,38 @@
       background: rgba(34,197,94,.08);
     }
 
-    /* Readouts placed into the image's blank fields */
+   /* Readouts that look like they are inside the blank fields */
 .fieldReadout{
   position:absolute;
-  transform: translateX(-50%);   /* only centre horizontally */
-  font-weight: 1000;
-  letter-spacing: .5px;
 
-  /* Key: consistent physical box so all align */
-  height: 44px;
-  min-width: 66px;
-  padding: 0 14px;
+  /* Make the readout itself fill the blank field area */
+  width: 18%;
+  height: 7.2%;
 
   display:flex;
   align-items:center;
   justify-content:center;
 
-  color:#0b1220;
-  background: rgba(255,255,255,.85);   /* a bit less “sticker” */
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,.18);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 12px rgba(0,0,0,.16);
+  /* No sticker look */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+
+  /* Text styling (ink-like) */
+  color: #0b1220;
+  font-weight: 1000;
+  font-size: clamp(18px, 2.1vw, 30px);
+  letter-spacing: .5px;
+
+  /* subtle “ink” settle so it doesn’t look pasted on */
+  text-shadow: 0 1px 0 rgba(255,255,255,.55);
+
   user-select:none;
-  pointer-events:none; /* prevents any drag/drop weirdness */
+  pointer-events:none;
 }
 
 .fieldReadout.small{
-  font-size: clamp(14px, 1.6vw, 20px);
-  /* do NOT change padding/height here */
-}
-
-.fieldReadout:not(.small){
-  font-size: clamp(16px, 2.0vw, 26px);
+  font-size: clamp(16px, 1.8vw, 26px);
 }
 
     /* Log */
@@ -207,10 +207,11 @@
              style="left: 72.0%; top: 22%; width: 18.8%; height: 50%;"></div>
 
         <!-- Field readouts -->
-        <div class="fieldReadout" id="startValue" style="left: 22%; top: 92.5%;">0°C</div>
-        <div class="fieldReadout small" id="appliedValue" style="left: 45%; top: 92.5%;">—</div>
-        <div class="fieldReadout small" id="removedValue" style="left: 64%; top: 92.5%;">—</div>
-        <div class="fieldReadout" id="resultValue" style="left: 88%; top: 92.5%;">0°C</div>
+    <!-- Field readouts (embedded in blank rectangles) -->
+<div class="fieldReadout" id="startValue"   style="left: 6.3%;  top: 88.6%;">0°C</div>
+<div class="fieldReadout small" id="appliedValue" style="left: 30.1%; top: 88.6%;">—</div>
+<div class="fieldReadout small" id="removedValue" style="left: 53.2%; top: 88.6%;">—</div>
+<div class="fieldReadout" id="resultValue"  style="left: 76.6%; top: 88.6%;">0°C</div>
 
       </div>
     </div>
