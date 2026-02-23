@@ -112,20 +112,26 @@
     }
 
     /* Place “Current Temperature” into one of the blank fields (bottom row) */
-    .tempReadout{
-      position:absolute;
-       left: 83%;
-  top: 92.2%;
+   /* Readouts placed into the image's blank fields */
+.fieldReadout{
+  position:absolute;
   transform: translate(-50%, -50%);
   font-weight: 1000;
-  font-size: clamp(18px, 2.2vw, 28px);
+  font-size: clamp(16px, 2.0vw, 26px);
   letter-spacing:.5px;
   color: #0b1220;
   background: rgba(255,255,255,.92);
   padding: 6px 12px;
   border-radius: 10px;
   border:1px solid rgba(0,0,0,.12);
-    }
+  box-shadow: 0 10px 18px rgba(0,0,0,.18);
+}
+
+/* Optional: smaller chips for Applied/Removed */
+.fieldReadout.small{
+  font-size: clamp(14px, 1.6vw, 20px);
+  padding: 5px 10px;
+}
 
     /* Log */
     .log{
