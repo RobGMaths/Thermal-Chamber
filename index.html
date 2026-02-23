@@ -196,8 +196,11 @@
   if (DEBUG_ZONES) document.body.classList.add("debug");
 
   // --- State ---
-  let temperature = 0;
-  let history = [];
+  let startTemperature = 0;
+let temperature = 0;
+
+let lastApplied = null;
+let lastRemoved = null;
 
   const brickValues = [1,2,3,4,5,-1,-2,-3,-4,-5];
 
@@ -217,15 +220,11 @@ const resultValueEl  = document.getElementById('resultValue');
   const isPos = (n) => n > 0;
 
   function renderAll(){
-
   startValueEl.textContent  = `${startTemperature}°C`;
   resultValueEl.textContent = `${temperature}°C`;
 
-  appliedValueEl.textContent = 
-    lastApplied === null ? '—' : fmt(lastApplied);
-
-  removedValueEl.textContent = 
-    lastRemoved === null ? '—' : fmt(lastRemoved);
+  appliedValueEl.textContent = (lastApplied === null) ? '—' : fmt(lastApplied);
+  removedValueEl.textContent = (lastRemoved === null) ? '—' : fmt(lastRemoved);
 }
 
   function addLog(text){
