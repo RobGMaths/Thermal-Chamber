@@ -86,14 +86,16 @@
     }
 
     .stage{
-  position:relative;
-  width:100%;
-  aspect-ratio: 1366 / 768;
-  background: url("chamber_stage.png") center/contain no-repeat;
-  background-color:#0b1220;
-}
+      position:relative;
+      width:100%;
+      aspect-ratio: 1366 / 768;
+      background: url("chamber_stage.png") center/contain no-repeat;
+      background-color:#0b1220;
+      border-radius: 12px;
+      overflow:hidden;
+    }
 
-    /* Drop zones are positioned in percentages so they scale with the image */
+    /* Drop zones */
     .dropZone{
       position:absolute;
       border-radius:14px;
@@ -111,27 +113,25 @@
       background: rgba(34,197,94,.08);
     }
 
-    /* Place “Current Temperature” into one of the blank fields (bottom row) */
-   /* Readouts placed into the image's blank fields */
-.fieldReadout{
-  position:absolute;
-  transform: translate(-50%, -50%);
-  font-weight: 1000;
-  font-size: clamp(16px, 2.0vw, 26px);
-  letter-spacing:.5px;
-  color: #0b1220;
-  background: rgba(255,255,255,.92);
-  padding: 6px 12px;
-  border-radius: 10px;
-  border:1px solid rgba(0,0,0,.12);
-  box-shadow: 0 10px 18px rgba(0,0,0,.18);
-}
-
-/* Optional: smaller chips for Applied/Removed */
-.fieldReadout.small{
-  font-size: clamp(14px, 1.6vw, 20px);
-  padding: 5px 10px;
-}
+    /* Readouts placed into the image's blank fields */
+    .fieldReadout{
+      position:absolute;
+      transform: translate(-50%, -50%);
+      font-weight: 1000;
+      font-size: clamp(16px, 2.0vw, 26px);
+      letter-spacing:.5px;
+      color: #0b1220;
+      background: rgba(255,255,255,.92);
+      padding: 6px 12px;
+      border-radius: 10px;
+      border:1px solid rgba(0,0,0,.12);
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      user-select:none;
+    }
+    .fieldReadout.small{
+      font-size: clamp(14px, 1.6vw, 20px);
+      padding: 5px 10px;
+    }
 
     /* Log */
     .log{
@@ -161,6 +161,17 @@
 
       <div class="brickGrid" id="brickGrid"></div>
 
+      <!-- Strict Mode Toggle -->
+      <div style="margin-top:12px; display:flex; align-items:center; gap:10px;">
+        <input type="checkbox" id="strictToggle" />
+        <label for="strictToggle" style="font-weight:800; cursor:pointer;">
+          Strict Mode (only remove applied bricks)
+        </label>
+      </div>
+      <div style="margin-top:6px; color:var(--muted); font-size:12px; line-height:1.35;">
+        Conceptual mode lets you “remove a change” even if it wasn’t added. Strict mode requires it to be present.
+      </div>
+
       <div class="controls">
         <button id="undoBtn" title="Undo last action">Undo</button>
         <button id="resetBtn" title="Reset everything">Reset</button>
@@ -171,24 +182,25 @@
 
     <!-- Stage -->
     <div class="stageCard">
-  <div class="stage" id="stage">
+      <div class="stage" id="stage">
 
-    <!-- Drop zone: CAULDRON -->
-    <div class="dropZone" id="applyZone"
-         style="left: 28.5%; top: 20.5%; width: 38.5%; height: 65%;"></div>
+        <!-- Drop zone: CAULDRON -->
+        <div class="dropZone" id="applyZone"
+             style="left: 28.5%; top: 20.5%; width: 38.5%; height: 65%;"></div>
 
-    <!-- Drop zone: REMOVAL ZONE -->
-    <div class="dropZone" id="removeZone"
-         style="left: 72.0%; top: 22%; width: 18.8%; height: 50%;"></div>
+        <!-- Drop zone: REMOVAL ZONE -->
+        <div class="dropZone" id="removeZone"
+             style="left: 72.0%; top: 22%; width: 18.8%; height: 50%;"></div>
 
-    <!-- NEW FIELD READOUTS -->
-    <div class="fieldReadout" id="startValue" style="left: 22%; top: 92%;">0°C</div>
-    <div class="fieldReadout small" id="appliedValue" style="left: 45%; top: 92%;">—</div>
-    <div class="fieldReadout small" id="removedValue" style="left: 64%; top: 92%;">—</div>
-    <div class="fieldReadout" id="resultValue" style="left: 88%; top: 92%;">0°C</div>
+        <!-- Field readouts -->
+        <div class="fieldReadout" id="startValue" style="left: 22%; top: 92%;">0°C</div>
+        <div class="fieldReadout small" id="appliedValue" style="left: 45%; top: 92%;">—</div>
+        <div class="fieldReadout small" id="removedValue" style="left: 64%; top: 92%;">—</div>
+        <div class="fieldReadout" id="resultValue" style="left: 88%; top: 92%;">0°C</div>
 
-  </div>
-</div>
+      </div>
+    </div>
+  </div><!-- ✅ closes .wrap -->
 
 <script>
   // Toggle to visually see drop zones for alignment
@@ -197,35 +209,44 @@
 
   // --- State ---
   let startTemperature = 0;
-let temperature = 0;
+  let temperature = 0;
 
-let lastApplied = null;
-let lastRemoved = null;
+  let lastApplied = null;
+  let lastRemoved = null;
+
+  let strictMode = false;
+  let activeBricks = []; // track applied bricks for strict removal
+
+  let history = []; // ✅ you were missing this
 
   const brickValues = [1,2,3,4,5,-1,-2,-3,-4,-5];
 
   // --- DOM ---
   const brickGrid = document.getElementById('brickGrid');
- const startValueEl   = document.getElementById('startValue');
-const appliedValueEl = document.getElementById('appliedValue');
-const removedValueEl = document.getElementById('removedValue');
-const resultValueEl  = document.getElementById('resultValue');
+
+  const startValueEl   = document.getElementById('startValue');
+  const appliedValueEl = document.getElementById('appliedValue');
+  const removedValueEl = document.getElementById('removedValue');
+  const resultValueEl  = document.getElementById('resultValue');
+
   const logList = document.getElementById('logList');
   const applyZone = document.getElementById('applyZone');
   const removeZone = document.getElementById('removeZone');
   const resetBtn = document.getElementById('resetBtn');
   const undoBtn = document.getElementById('undoBtn');
+  const strictToggle = document.getElementById('strictToggle');
 
+  // --- Helpers ---
   const fmt = (n) => (n > 0 ? `+${n}` : `${n}`);
   const isPos = (n) => n > 0;
 
   function renderAll(){
-  startValueEl.textContent  = `${startTemperature}°C`;
-  resultValueEl.textContent = `${temperature}°C`;
+    startValueEl.textContent  = `${startTemperature}°C`;
+    resultValueEl.textContent = `${temperature}°C`;
 
-  appliedValueEl.textContent = (lastApplied === null) ? '—' : fmt(lastApplied);
-  removedValueEl.textContent = (lastRemoved === null) ? '—' : fmt(lastRemoved);
-}
+    appliedValueEl.textContent = (lastApplied === null) ? '—' : fmt(lastApplied);
+    removedValueEl.textContent = (lastRemoved === null) ? '—' : fmt(lastRemoved);
+  }
 
   function addLog(text){
     const div = document.createElement('div');
@@ -251,27 +272,40 @@ const resultValueEl  = document.getElementById('resultValue');
     });
   }
 
-function applyChange(v){
-  temperature += v;
-  history.push({type:'apply', value:v});
+  function applyChange(v){
+    temperature += v;
+    activeBricks.push(v);
 
-  lastApplied = v;
-  lastRemoved = null;
+    lastApplied = v;
+    lastRemoved = null;
 
-  addLog(`Applied change ${fmt(v)} → temperature is now ${temperature}°C.`);
-  renderAll();
-}
+    history.push({type:'apply', value:v});
 
-function removeChange(v){
-  temperature += (-v);
-  history.push({type:'remove', value:v});
+    addLog(`Applied change ${fmt(v)} → temperature is now ${temperature}°C.`);
+    renderAll();
+  }
 
-  lastRemoved = v;
-  lastApplied = null;
+  function removeChange(v){
+    if(strictMode){
+      const idx = activeBricks.indexOf(v);
+      if(idx === -1){
+        addLog(`Strict Mode: cannot remove ${fmt(v)} because it was not applied.`);
+        return;
+      }
+      activeBricks.splice(idx, 1);
+    }
 
-  addLog(`Removed change ${fmt(v)} → equivalent to adding ${fmt(-v)} → temperature is now ${temperature}°C.`);
-  renderAll();
-}
+    // Removing change v is equivalent to adding -v
+    temperature += (-v);
+
+    lastRemoved = v;
+    lastApplied = null;
+
+    history.push({type:'remove', value:v, strict: strictMode});
+
+    addLog(`Removed change ${fmt(v)} → equivalent to adding ${fmt(-v)} → temperature is now ${temperature}°C.`);
+    renderAll();
+  }
 
   function setDropZone(zoneEl, onDropFn){
     zoneEl.addEventListener('dragover', (e) => {
@@ -289,19 +323,24 @@ function removeChange(v){
     });
   }
 
-function resetAll(){
-  startTemperature = 0;
-  temperature = 0;
+  function resetAll(){
+    startTemperature = 0;
+    temperature = 0;
 
-  lastApplied = null;
-  lastRemoved = null;
+    lastApplied = null;
+    lastRemoved = null;
 
-  history = [];
-  logList.innerHTML = '';
-  addLog('Reset: temperature back to 0°C.');
+    strictMode = false;
+    if(strictToggle) strictToggle.checked = false;
 
-  renderAll();
-}
+    activeBricks = [];
+    history = [];
+
+    logList.innerHTML = '';
+    addLog('Reset: temperature back to 0°C.');
+
+    renderAll();
+  }
 
   function undo(){
     const last = history.pop();
@@ -309,23 +348,51 @@ function resetAll(){
       addLog('Nothing to undo.');
       return;
     }
+
     if(last.type === 'apply'){
       temperature -= last.value;
+
+      // remove one instance of that value from activeBricks (from end)
+      for(let i = activeBricks.length - 1; i >= 0; i--){
+        if(activeBricks[i] === last.value){
+          activeBricks.splice(i, 1);
+          break;
+        }
+      }
+
       addLog(`Undo: removed applied change ${fmt(last.value)} → temperature is now ${temperature}°C.`);
     } else {
-      // last.type === 'remove' means we previously did temperature += (-v)
+      // undo a removal: we previously did temperature += (-v); undo means temperature += v
       temperature += last.value;
+
+      // if strict was on at the time, we removed it from activeBricks → put it back
+      if(last.strict){
+        activeBricks.push(last.value);
+      }
+
       addLog(`Undo: reversed removal of ${fmt(last.value)} → temperature is now ${temperature}°C.`);
     }
-    renderTemp();
+
+    // clear last-action boxes on undo (keeps it simple + honest)
+    lastApplied = null;
+    lastRemoved = null;
+
+    renderAll();
   }
 
-  // Init
+  // Strict toggle
+  strictToggle.addEventListener('change', (e) => {
+    strictMode = e.target.checked;
+    addLog(`Strict Mode is now ${strictMode ? 'ON' : 'OFF'}.`);
+  });
+
+  // --- Init ---
   buildBricks();
   setDropZone(applyZone, applyChange);
   setDropZone(removeZone, removeChange);
   resetBtn.addEventListener('click', resetAll);
   undoBtn.addEventListener('click', undo);
+
   resetAll();
 </script>
 </body>
