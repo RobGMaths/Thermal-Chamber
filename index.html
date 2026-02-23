@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Thermal Change Chamber</title>
+  <style>
+    :root{
+      --text:#e5e7eb;
+      --muted:#a7b0c0;
+      --border: rgba(255,255,255,.18);
+      --shadow: 0 18px 45px rgba(0,0,0,.35);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:#0b1220;
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      padding:18px;
+    }
+
+    /* Layout: tray + stage */
+    .wrap{
+      width:min(1200px, 100%);
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    /* Brick tray */
+    .tray{
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: var(--shadow);
+    }
+    .tray h1{ margin:0 0 10px; font-size:18px; }
+    .tray p{ margin:0 0 12px; color:var(--muted); font-size:13px; line-height:1.35; }
+
+    .brickGrid{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap:10px;
+    }
+    .brick{
+      user-select:none;
+      cursor:grab;
+      border-radius:12px;
+      padding:12px 10px;
+      text-align:center;
+      font-weight:900;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+    }
+    .brick.pos{ outline:2px solid rgba(245,158,11,.35); }
+    .brick.neg{ outline:2px solid rgba(59,130,246,.35); }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+    }
+    button{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    /* Stage */
+    .stageCard{
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      padding:12px;
+      box-shadow: var(--shadow);
+    }
+
+    .stage{
+      position:relative;
+      width:100%;
+      aspect-ratio: 16 / 9; /* your image is 1366x768-ish */
+      border-radius:12px;
+      overflow:hidden;
+      background: url("chamber_stage.png") center/cover no-repeat;
+    }
+
+    /* Drop zones are positioned in percentages so they scale with the image */
+    .dropZone{
+      position:absolute;
+      border-radius:14px;
+      border: 2px dashed transparent;
+      background: rgba(255,255,255,0);
+    }
+    .dropZone.over{
+      border-color: rgba(229,231,235,.55);
+      background: rgba(255,255,255,.08);
+    }
+
+    /* DEBUG: show zone outlines by toggling a class on body */
+    body.debug .dropZone{
+      border-color: rgba(34,197,94,.65);
+      background: rgba(34,197,94,.08);
+    }
+
+    /* Place “Current Temperature” into one of the blank fields (bottom row) */
+    .tempReadout{
+      position:absolute;
+      left: 62%;   /* adjust if needed */
+      top: 90.5%;  /* adjust if needed */
+      transform: translate(-50%, -50%);
+      font-weight: 1000;
+      font-size: clamp(18px, 2.2vw, 28px);
+      letter-spacing:.5px;
+      color: #0b1220;
+      background: rgba(255,255,255,.92);
+      padding: 6px 12px;
+      border-radius: 10px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+
+    /* Log */
+    .log{
+      margin-top:12px;
+      border-top:1px solid rgba(255,255,255,.10);
+      padding-top:10px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+      max-height: 240px;
+      overflow:auto;
+    }
+    .logItem{ padding:6px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+    .logItem:last-child{ border-bottom:none; }
+
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Brick Tray -->
+    <div class="tray">
+      <h1>Change Bricks</h1>
+      <p>Drag a brick into the <b>cauldron</b> to apply a change. Drag into the <b>Removal Zone</b> to remove that change.</p>
+
+      <div class="brickGrid" id="brickGrid"></div>
+
+      <div class="controls">
+        <button id="undoBtn" title="Undo last action">Undo</button>
+        <button id="resetBtn" title="Reset everything">Reset</button>
+      </div>
+
+      <div class="log" id="logList"></div>
+    </div>
+
+    <!-- Stage -->
+    <div class="stageCard">
+      <div class="stage" id="stage">
+        <!-- Drop zone: CAULDRON (apply) -->
+        <div class="dropZone" id="applyZone"
+             style="left: 27%; top: 30%; width: 42%; height: 55%;"></div>
+
+        <!-- Drop zone: REMOVAL ZONE (remove) -->
+        <div class="dropZone" id="removeZone"
+             style="left: 68%; top: 22%; width: 27%; height: 44%;"></div>
+
+        <!-- Temperature readout sitting in one of the bottom blank fields -->
+        <div class="tempReadout" id="tempValue">0°C</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Toggle to visually see drop zones for alignment
+  const DEBUG_ZONES = false;
+  if (DEBUG_ZONES) document.body.classList.add("debug");
+
+  // --- State ---
+  let temperature = 0;
+  let history = [];
+
+  const brickValues = [1,2,3,4,5,-1,-2,-3,-4,-5];
+
+  // --- DOM ---
+  const brickGrid = document.getElementById('brickGrid');
+  const tempValue = document.getElementById('tempValue');
+  const logList = document.getElementById('logList');
+  const applyZone = document.getElementById('applyZone');
+  const removeZone = document.getElementById('removeZone');
+  const resetBtn = document.getElementById('resetBtn');
+  const undoBtn = document.getElementById('undoBtn');
+
+  const fmt = (n) => (n > 0 ? `+${n}` : `${n}`);
+  const isPos = (n) => n > 0;
+
+  function renderTemp(){
+    tempValue.textContent = `${temperature}°C`;
+  }
+
+  function addLog(text){
+    const div = document.createElement('div');
+    div.className = 'logItem';
+    div.textContent = text;
+    logList.prepend(div);
+  }
+
+  function buildBricks(){
+    brickGrid.innerHTML = '';
+    brickValues.forEach(v => {
+      const b = document.createElement('div');
+      b.className = `brick ${isPos(v) ? 'pos' : 'neg'}`;
+      b.textContent = fmt(v);
+      b.draggable = true;
+
+      b.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', String(v));
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+
+      brickGrid.appendChild(b);
+    });
+  }
+
+  function applyChange(v){
+    temperature += v;
+    history.push({type:'apply', value:v});
+    addLog(`Applied change ${fmt(v)} → temperature is now ${temperature}°C.`);
+    renderTemp();
+  }
+
+  function removeChange(v){
+    temperature += (-v);
+    history.push({type:'remove', value:v});
+    addLog(`Removed change ${fmt(v)} → equivalent to adding ${fmt(-v)} → temperature is now ${temperature}°C.`);
+    renderTemp();
+  }
+
+  function setDropZone(zoneEl, onDropFn){
+    zoneEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zoneEl.classList.add('over');
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('over'));
+    zoneEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zoneEl.classList.remove('over');
+      const data = e.dataTransfer.getData('text/plain');
+      if(data === '' || isNaN(Number(data))) return;
+      onDropFn(Number(data));
+    });
+  }
+
+  function resetAll(){
+    temperature = 0;
+    history = [];
+    logList.innerHTML = '';
+    addLog('Reset: temperature back to 0°C.');
+    renderTemp();
+  }
+
+  function undo(){
+    const last = history.pop();
+    if(!last){
+      addLog('Nothing to undo.');
+      return;
+    }
+    if(last.type === 'apply'){
+      temperature -= last.value;
+      addLog(`Undo: removed applied change ${fmt(last.value)} → temperature is now ${temperature}°C.`);
+    } else {
+      // last.type === 'remove' means we previously did temperature += (-v)
+      temperature += last.value;
+      addLog(`Undo: reversed removal of ${fmt(last.value)} → temperature is now ${temperature}°C.`);
+    }
+    renderTemp();
+  }
+
+  // Init
+  buildBricks();
+  setDropZone(applyZone, applyChange);
+  setDropZone(removeZone, removeChange);
+  resetBtn.addEventListener('click', resetAll);
+  undoBtn.addEventListener('click', undo);
+  resetAll();
+</script>
+</body>
+</html>
